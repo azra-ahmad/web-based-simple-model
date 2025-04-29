@@ -62,17 +62,14 @@
 
                 scene.meshes.forEach(mesh => {
                     if (mesh.name !== "ground") {
-                        // Skala dan posisi naga
+                        // Skala dan posisi model
                         mesh.scaling = new BABYLON.Vector3(0.3, 0.3, 0.3);
                         mesh.position.y = 1;
 
-                        // Material reflektif
-                        const pbr = new BABYLON.PBRMaterial("pbr", scene);
-                        pbr.metallic = 0.5;
-                        pbr.roughness = 0.4;
-                        pbr.environmentTexture = scene.environmentTexture;
-                        pbr.albedoColor = new BABYLON.Color3(0.8, 0.8, 0.8);
-                        mesh.material = pbr;
+                        // Tambahkan material dengan tekstur
+                        const textureMaterial = new BABYLON.StandardMaterial("textureMat", scene);
+                        textureMaterial.diffuseTexture = new BABYLON.Texture("textures/bee_texture.png", scene);
+                        mesh.material = textureMaterial;
 
                         // Shadow settings
                         mesh.receiveShadows = true;
