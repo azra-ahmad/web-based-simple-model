@@ -1,93 +1,168 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Based Simple Shadow - Final</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Web based Advanced lighting & shadow: Animation + Interactive</title>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <style>
-        body {
+        html, body {
             margin: 0;
-            background-color: #e0e0e06e;
-            font-family: Arial, sans-serif;
-            text-align: center;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
         }
         canvas {
-            width: 700px;
-            height: 700px;
-            border: 1px solid #575757;
+            width: 100%;
+            height: 100%;
+            display: block;
         }
     </style>
 </head>
 <body>
-    <h1>Web Based Simple Shadow - Final</h1>
-    <canvas id="modelCanvas"></canvas>
+    <canvas id="renderCanvas"></canvas>
 
     <script>
-        function createShadowScene(canvasId, modelPath) {
-            const canvas = document.getElementById(canvasId);
-            const engine = new BABYLON.Engine(canvas, true);
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+
+        const createScene = function () {
             const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.1);
 
-            scene.clearColor = new BABYLON.Color3(1, 1, 1); // Background putih
+            scene.imageProcessingConfiguration.contrast = 1.2;
+            scene.imageProcessingConfiguration.exposure = 1.1;
 
-            // Kamera
-            const camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 3, Math.PI / 3, 9, BABYLON.Vector3.Zero(), scene);
+            const camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 2.5, 5, BABYLON.Vector3.Zero(), scene);
             camera.attachControl(canvas, true);
 
-            // Cahaya utama (Directional untuk bayangan)
-            const dirLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(-2, -4, -2), scene);
-            dirLight.position = new BABYLON.Vector3(4, 8, 4);
-            dirLight.intensity = 1.4;
+            const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 20, height: 20}, scene);
+            const groundMaterial = new BABYLON.StandardMaterial("groundMat", scene);
+            groundMaterial.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+            ground.material = groundMaterial;
+            ground.receiveShadows = true;
 
-            // Cahaya tambahan agar bentuk objek lebih kelihatan
-            const fillLight = new BABYLON.HemisphericLight("fillLight", new BABYLON.Vector3(0, 1, 0), scene);
-            fillLight.intensity = 0.3;
+            const hemiLight = new BABYLON.HemisphericLight("hemiLight", new BABYLON.Vector3(0, 1, 0), scene);
+            hemiLight.intensity = 0.5;
 
-            // Shadow Generator
-            const shadowGen = new BABYLON.ShadowGenerator(4096, dirLight);
-            shadowGen.useBlurExponentialShadowMap = true;
-            shadowGen.blurKernel = 32;
-            shadowGen.setDarkness(0.5);
-            shadowGen.bias = 0.0001;
-            shadowGen.normalBias = 0.05;
-            shadowGen.forceBackFacesOnly = true;
+            const dirLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(-1, -2, -1), scene);
+            dirLight.position = new BABYLON.Vector3(5, 10, 5);
+            dirLight.intensity = 2.5;
 
-            // Platform (panggung)
-            const platform = BABYLON.MeshBuilder.CreateBox("platform", { width: 16, depth: 16, height: 0.4 }, scene);
-            platform.position.y = -0.2;
-            const platformMat = new BABYLON.StandardMaterial("platformMat", scene);
-            platformMat.diffuseColor = new BABYLON.Color3(0.85, 0.85, 0.85); // Light gray
-            platform.material = platformMat;
-            platform.receiveShadows = true;
+            const shadowGenerator = new BABYLON.ShadowGenerator(2048, dirLight);
+            shadowGenerator.useBlurExponentialShadowMap = true;
+            shadowGenerator.blurKernel = 32;
+            shadowGenerator.depthScale = 100;
+            shadowGenerator.darkness = 0.3;
 
-            // Load Model
-            BABYLON.SceneLoader.ImportMesh("", "models/", modelPath, scene, function(meshes) {
-                let minY = Infinity;
+            BABYLON.SceneLoader.Append("models/", "Bee.glb", scene, function (scene) {
+                console.log("Model berhasil dimuat!");
 
-                meshes.forEach(mesh => {
-                    const bound = mesh.getBoundingInfo().boundingBox.minimumWorld.y;
-                    if (bound < minY) minY = bound;
+                scene.meshes.forEach(mesh => {
+                    if (mesh.name !== "ground") {
+                        // Skala dan posisi naga
+                        mesh.scaling = new BABYLON.Vector3(0.3, 0.3, 0.3);
+                        mesh.position.y = 1;
+
+                        // Material reflektif
+                        const pbr = new BABYLON.PBRMaterial("pbr", scene);
+                        pbr.metallic = 0.5;
+                        pbr.roughness = 0.4;
+                        pbr.environmentTexture = scene.environmentTexture;
+                        pbr.albedoColor = new BABYLON.Color3(0.8, 0.8, 0.8);
+                        mesh.material = pbr;
+
+                        // Shadow settings
+                        mesh.receiveShadows = true;
+                        mesh.castShadow = true;
+                        shadowGenerator.addShadowCaster(mesh);
+
+                        // Animasi terbang (naik-turun)
+                        const animation = new BABYLON.Animation(
+                            "flyAnimation",
+                            "position.y",
+                            30,
+                            BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+                            BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
+                        );
+
+                        const keys = [
+                            { frame: 0, value: 1 },
+                            { frame: 30, value: 1.5 },
+                            { frame: 60, value: 1 }
+                        ];
+
+                        animation.setKeys(keys);
+                        mesh.animations = [animation];
+                        scene.beginAnimation(mesh, 0, 60, true);
+                    }
                 });
 
-                const offsetY = -minY + 0.01;
-                meshes.forEach(mesh => {
-                    mesh.scaling = new BABYLON.Vector3(1.5, 1.5, 1.5);
-                    mesh.position.y += offsetY;
-                    mesh.receiveShadows = true;
-                    mesh.castShadow = true;
-                    shadowGen.addShadowCaster(mesh);
-                });
-
-                camera.setTarget(BABYLON.Vector3.Zero());
+                // Cek apakah ada animasi dalam model (misalnya gerakan sayap)
+                if (scene.animationGroups && scene.animationGroups.length > 0) {
+                    scene.animationGroups.forEach(animGroup => {
+                        animGroup.start(true); // true = loop animasi bawaan model
+                    });
+                }
             });
 
-            engine.runRenderLoop(() => scene.render());
-            window.addEventListener("resize", () => engine.resize());
-        }
+            // Tambahkan event listener untuk keyboard WASD dengan pergerakan smooth
+            let selectedMesh = null;
+            const movement = { x: 0, z: 0, y: 0 };
+            const step = 0.1; // Kecepatan pergerakan
 
-        createShadowScene("modelCanvas", "sofa.gltf");
+            // Pilih mesh pertama yang bukan ground sebagai objek yang akan digerakkan
+            scene.onReadyObservable.add(() => {
+                selectedMesh = scene.meshes.find(mesh => mesh.name !== "ground");
+            });
+
+            // Gabungkan semua event listener keyboard ke dalam satu fungsi
+            const handleKeyEvent = (event, isKeyDown) => {
+                const stepValue = isKeyDown ? step : 0;
+                switch (event.key) {
+                    case "w":
+                        movement.z = -stepValue; // Bergerak ke depan
+                        break;
+                    case "s":
+                        movement.z = stepValue; // Bergerak ke belakang
+                        break;
+                    case "a":
+                        movement.x = stepValue; // Bergerak ke kanan
+                        break;
+                    case "d":
+                        movement.x = -stepValue; // Bergerak ke kiri
+                        break;
+                    case "ArrowUp":
+                        movement.y += stepValue * 2; // Bergerak ke atas
+                        break;
+                    case "ArrowDown":
+                        movement.y += -stepValue * 2; // Bergerak ke bawah
+                        break;
+                }
+            };
+
+            window.addEventListener("keydown", (event) => handleKeyEvent(event, true));
+            window.addEventListener("keyup", (event) => handleKeyEvent(event, false));
+
+            scene.registerBeforeRender(() => {
+                if (selectedMesh) {
+                    selectedMesh.position.x += movement.x;
+                    selectedMesh.position.z += movement.z;
+                    selectedMesh.position.y += movement.y;
+                }
+            });
+
+            return scene;
+        };
+
+        const scene = createScene();
+        engine.runRenderLoop(() => scene.render());
+
+        window.addEventListener("resize", () => {
+            engine.resize();
+        });
     </script>
 </body>
 </html>
