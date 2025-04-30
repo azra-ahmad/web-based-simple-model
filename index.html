@@ -56,12 +56,13 @@
             shadowGenerator.blurKernel = 32;
             shadowGenerator.depthScale = 100;
             shadowGenerator.darkness = 0.3;
-
+            
             BABYLON.SceneLoader.Append("models/", "Bee.glb", scene, function (scene) {
                 console.log("Model berhasil dimuat!");
 
                 scene.meshes.forEach(mesh => {
                     if (mesh.name !== "ground") {
+                        mesh.name = "bee";
                         // Skala dan posisi model
                         mesh.scaling = new BABYLON.Vector3(0.3, 0.3, 0.3);
                         mesh.position.y = 1;
@@ -104,6 +105,34 @@
                     });
                 }
             });
+            
+
+            BABYLON.SceneLoader.Append("models/", "Flower.glb", scene, function (scene) {
+                console.log("Model GLB berhasil dimuat!");
+
+                // Setelah model dimuat, Anda bisa mengakses mesh dan mengubah propertinya
+                scene.meshes.forEach(mesh => {
+                    if (mesh.name !== "ground") {
+                        mesh.name = "ground";
+                        // Skala model, ubah posisi dan tambahkan material
+                        mesh.scaling = new BABYLON.Vector3(1, 1, 1);
+                        mesh.position.y = 0;
+
+                        // Tambahkan material pada objek jika diperlukan
+                        const material = new BABYLON.StandardMaterial("materialName", scene);
+                        material.diffuseColor = new BABYLON.Color3(1, 1, 0); // Warna kuning (solid)
+
+                        // Hilangkan efek reflektif
+                        material.specularColor = new BABYLON.Color3(0, 0, 0); // Tidak ada highlight
+                        material.emissiveColor = new BABYLON.Color3(0, 0, 0); // Tidak memancarkan cahaya 
+
+                        mesh.receiveShadows = true;
+                        mesh.castShadow = true;
+                        shadowGenerator.addShadowCaster(mesh);
+                    }
+                });
+            });
+
 
             // Tambahkan event listener untuk keyboard WASD dengan pergerakan smooth
             let selectedMesh = null;
